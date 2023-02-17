@@ -14,10 +14,12 @@ func main() {
 	l := log.New(os.Stdout, "product-api", log.LstdFlags)
 	helloHandler := handlers.NewHello(l)
 	goodbyeHandler := handlers.NewGoodbye(l)
+	productsHandler := handlers.NewProducts(l)
 
 	sm := http.NewServeMux()
 	sm.Handle("/", helloHandler)
 	sm.Handle("/goodbye", goodbyeHandler)
+	sm.Handle("/products", productsHandler)
 
 	// handling timeouts and graceful shutdown
 	server := &http.Server{
