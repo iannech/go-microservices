@@ -19,7 +19,7 @@ func main() {
 	sm := http.NewServeMux()
 	sm.Handle("/", helloHandler)
 	sm.Handle("/goodbye", goodbyeHandler)
-	sm.Handle("/products", productsHandler)
+	sm.Handle("/products/", productsHandler)
 
 	// handling timeouts and graceful shutdown
 	server := &http.Server{
