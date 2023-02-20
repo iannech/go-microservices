@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"io"
+	"time"
+)
 
 // model representing a product
 type Product struct{
@@ -15,8 +19,17 @@ type Product struct{
 }
 
 // returns all products
-func GetProducts() []*Product{
+func GetProducts() Products{
 	return productList
+}
+
+// using Encoder() is much faster and better compared to Marshall
+// cleaner way to return products/error
+type Products []*Product
+
+func(p *Products) ToJSON(w io.Writer) error {
+	encoder := json.NewEncoder(w)
+	return encoder.Encode(p)
 }
 
 // static list of products to act as data source
