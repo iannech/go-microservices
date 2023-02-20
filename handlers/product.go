@@ -16,8 +16,14 @@ func NewProducts(l *log.Logger) *Products{
 }
 
 func(p *Products) ServeHTTP(w http.ResponseWriter, r *http.Request){
+	// handle request for a list of products
 	if r.Method == http.MethodGet{
 		p.getProducts(w, r)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		p.addProduct(w, r)
 		return
 	}
 
@@ -25,7 +31,7 @@ func(p *Products) ServeHTTP(w http.ResponseWriter, r *http.Request){
 	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-// GET all Products
+// GET: all Products
 func(p *Products) getProducts(w http.ResponseWriter, r *http.Request){
 	productList := models.GetProducts()
 
@@ -35,4 +41,18 @@ func(p *Products) getProducts(w http.ResponseWriter, r *http.Request){
 	if err != nil {
 		http.Error(w, "Unable to marshall productList", http.StatusInternalServerError)
 	} 
+}
+
+// POST: add Product
+func(p *Products) addProduct(w http.ResponseWriter, r *http.Request){
+	p.l.Println("Handle POST products")
+
+	product := &models.Product{}
+
+	err := product.FromJSON(r.Body)
+	if err != nil {
+		http.Error(w, "Unable to decode json", http.StatusBadRequest)
+	}
+
+	models.AddProduct(product)
 }
