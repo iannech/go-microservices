@@ -1,14 +1,12 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"regexp"
 	"time"
-
-	"github.com/go-playground/validator/v10"
 )
+
+// ErrProductNotFound is an error raised when a product can not be found in the database
+var ErrProductNotFound = fmt.Errorf("Product not found")
 
 // model defining structure for an API product
 type Product struct {
@@ -22,44 +20,56 @@ type Product struct {
 	DeletedOn   string  `json:"-"`
 }
 
-// function to validate Product
-func (p *Product) Validate() error {
-	validate := validator.New()
-	validate.RegisterValidation("sku", validateSKU)
-	return validate.Struct(p)
-}
-
-// helper function to validate sku
-func validateSKU(fl validator.FieldLevel) bool {
-	// sku is of format abc-cde-ghsk
-	re := regexp.MustCompile(`[a-z]+-[a-z]+-[a-z]+`)
-	matches := re.FindAllString(fl.Field().String(), -1)
-
-	if len(matches) != 1 {
-		return false
-	}
-	return true
-}
-
-// returns all products
+// returns all products from Database
 func GetProducts() Products {
 	return productList
 }
 
-func AddProduct(p *Product) {
-	p.ID = getNextId()
-	productList = append(productList, p)
-}
-
-func UpdatePoduct(id int, p *Product) error {
-	_, pos, err := findProduct(id)
-
-	if err != nil {
-		return err
+// GetProductByID returns a single product which matches the id from the
+// database.
+// If a product is not found this function returns a ProductNotFound error
+func GetProductByID(id int) (*Product, error) {
+	i := findIndexByProductID(id)
+	if id == -1 {
+		return nil, ErrorProductNotFound
 	}
 
-	p.ID = id
-	productList[pos] = p
+	return productList[i], nil
+}
+
+// AddProduct adds a new product to the database
+func AddProduct(p Product) {
+	maxID := productList[len(productList)-1].ID
+	p.ID = maxID + 1
+	productList = append(productList, &p)
+}
+
+// UpdateProduct replaces a product in the database with the given
+// item.
+// If a product with the given id does not exist in the database
+// this function returns a ProductNotFound error
+func UpdatePoduct(p Product) error {
+	i := findIndexByProductID(p.ID)
+
+	if i == -1 {
+		return ErrorProductNotFound
+	}
+
+	// update the product in the DB
+	productList[i] = &p
+
+	return nil
+}
+
+// DeleteProduct deletes a product from the database
+func DeleteProduct(id int) error {
+	i := findIndexByProductID(id)
+
+	if i == -1 {
+		return ErrorProductNotFound
+	}
+
+	productList = append(productList[:1], productList[i+1])
 
 	return nil
 }
@@ -81,21 +91,19 @@ func getNextId() int {
 	return lp.ID + 1
 }
 
+// findIndex finds the index of a product in the database
+// returns -1 when no product can be found
+func findIndexByProductID(id int) int {
+	for i, p := range productList {
+		if p.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
 // Products is a collection of Product
 type Products []*Product
-
-// using Encoder() is much faster and better compared to Marshall
-// as it doesn't have to buffer the output into an in memory slice
-// of bytes. This reduces allocations and the overheads of the service
-func (p *Products) ToJSON(w io.Writer) error {
-	encoder := json.NewEncoder(w)
-	return encoder.Encode(p)
-}
-
-func (p *Product) FromJSON(r io.Reader) error {
-	decoder := json.NewDecoder(r)
-	return decoder.Decode(p)
-}
 
 // static list of products to act as data source
 var productList = []*Product{
